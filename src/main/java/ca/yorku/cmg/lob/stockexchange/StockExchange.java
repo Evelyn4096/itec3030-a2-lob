@@ -14,9 +14,9 @@ import ca.yorku.cmg.lob.orderbook.Trade;
 import ca.yorku.cmg.lob.security.Security;
 import ca.yorku.cmg.lob.security.SecurityList;
 import ca.yorku.cmg.lob.stockexchange.events.NewsBoard;
+import ca.yorku.cmg.lob.stockexchange.tradingagent.AbstractTradingAgentFactory;
 import ca.yorku.cmg.lob.stockexchange.tradingagent.TradingAgent;
-import ca.yorku.cmg.lob.stockexchange.tradingagent.TradingAgentAggressive;
-import ca.yorku.cmg.lob.stockexchange.tradingagent.TradingAgentConservative;
+import ca.yorku.cmg.lob.stockexchange.tradingagent.TradingAgentFactory;
 import ca.yorku.cmg.lob.trader.Trader;
 import ca.yorku.cmg.lob.trader.TraderInstitutional;
 import ca.yorku.cmg.lob.trader.TraderRetail;
@@ -159,6 +159,7 @@ public class StockExchange {
 		    try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 	            String line;
 	            boolean isFirstLine = true; // Skip header
+				AbstractTradingAgentFactory factory = new TradingAgentFactory();
 
 	            while ((line = br.readLine()) != null) {
 	                if (isFirstLine) {
@@ -183,11 +184,14 @@ public class StockExchange {
 	                    } else {
 	                    	accounts.addAccount(new AccountPro(t,initBalance));
 	                    }
-	                    if (tradingStyle.equals("Conservative")) {
-	                    	traders.add(new TradingAgentConservative(t,this,newsDesk));
-	                    } else {
-	                    	traders.add(new TradingAgentAggressive(t,this,newsDesk));
-	                    }
+	                    TradingAgent agent = factory.createAgent(
+							traderType,        // "Retail" or "Institutional"
+							tradingStyle,      // "Conservative" or "Aggressive"
+							t,
+							this,
+							newsDesk
+							);
+						traders.add(agent);
 	                    
 	                } else {
 	                    System.err.println("Skipping malformed line (two few attributes): " + line);

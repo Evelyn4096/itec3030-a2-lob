@@ -8,10 +8,11 @@ import ca.yorku.cmg.lob.trader.Trader;
 /**
  * An trading agent that receives news and reacts by submitting ask or bid orders.
  */
-public abstract class TradingAgent {
+public abstract class TradingAgent implements INewsObserver {
 	protected Trader t;
 	protected StockExchange exc;
 	protected NewsBoard news;
+	protected ITradingStrategy strategy;
 	
 	/**
 	 * Constructor
@@ -19,11 +20,19 @@ public abstract class TradingAgent {
 	 * @param e The {@linkplain StockExchange} object at which the agent has an account and trades in. 
 	 * @param n The {@linkplain NewsBoard} object that generates news events.
 	 */
-	public TradingAgent(Trader t, StockExchange e, NewsBoard n) {
-		this.t=t;
+	public TradingAgent(Trader t, StockExchange e, NewsBoard n, ITradingStrategy s) {
+		this.t = t;
 		this.exc = e;
-		this.news = n;
-	}
+        this.news = n;
+        this.strategy = s;
+		n.registerObserver(this);
+    }
+
+	@Override
+	public void update(Event e) {
+		 examineEvent(e);
+		} 
+
 	
 	/**
 	 * Method to be called as time advances to {@code time}. In response the TradingAgent will poll the NewsBoard for events.
@@ -33,18 +42,6 @@ public abstract class TradingAgent {
 		pollForEvents(time);
 	}
 
-	/**
-	 * Examine if an event is relevant for the Agent, i.e., if the Agent has a position on it.
-	 * @param e The {@linkplain Event} object in question
-	 */
-	private void examineEvent(Event e) {
-		int positionInSecurity = exc.getAccounts().getTraderAccount(t).getPosition(e.getSecrity().getTicker());
-		if (positionInSecurity > 0) {
-			actOnEvent(e,positionInSecurity,exc.getPrice(e.getSecrity().getTicker()));
-		}
-	}
-
-	
 	/**
 	 * Check into the {@linkplain NewsBoard} if there are any events at time {@code time}. If there is one (it assumes only one event at a time), send it for examination.
 	 * @param time The time for which to poll for events. Unit is days.
@@ -57,6 +54,17 @@ public abstract class TradingAgent {
 
 	}
 	
+	/**
+	 * Examine if an event is relevant for the Agent, i.e., if the Agent has a position on it.
+	 * @param e The {@linkplain Event} object in question
+	 */
+	private void examineEvent(Event e) {
+		int positionInSecurity = exc.getAccounts().getTraderAccount(t).getPosition(e.getSecrity().getTicker());
+		if (positionInSecurity > 0) {
+			actOnEvent(e,positionInSecurity,exc.getPrice(e.getSecrity().getTicker()));
+		}
+	}
+	
 	
 	/**
 	 * Act in response to a news {@linkplain Event}. Exact reaction strategy to be implemented by specialized agents.
@@ -64,7 +72,10 @@ public abstract class TradingAgent {
 	 * @param pos The position (number of units) of the trader to the ticker that is mentioned in the Event.
 	 * @param price The current price of the relevant ticker. 
 	 */
-	protected abstract void actOnEvent(Event e, int pos, int price);
+	protected void actOnEvent(Event e, int pos, int price) {
+    // delegate to strategy
+    strategy.actOnEvent(e, pos, price);
+}
 	
 	
 	
